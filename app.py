@@ -16,15 +16,63 @@ st.set_page_config(page_title="Tenant Management System", page_icon="🏠", layo
 def local_css():
     st.markdown("""
     <style>
-    .stApp { background: linear-gradient(180deg,#f7f9fc,#eef5ff); }
-    [data-testid="stSidebar"] { background: #0b2545; color:white; }
-    .card { background: white; padding: 18px; border-radius: 12px; box-shadow: 0 6px 18px rgba(14,30,37,0.08); }
-    h1 { color: #062745; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    .big-number { font-size:28px; font-weight:700; color:#062745; }
-    .stButton>button { background-color: #0b63d6; color:white; border-radius:10px; padding:10px 18px; }
-    .stButton>button:hover { background-color:#084ab0; }
-    .stTextInput>div>div>input { border-radius:8px; padding:10px; }
-    .stSelectbox>div>div>div { border-radius:8px; }
+
+    /* Background of full app */
+    .stApp { 
+        background: #eef5ff !important;
+    }
+
+    /* Sidebar */
+    [data-testid="stSidebar"] { 
+        background: #0b2545 !important; 
+        color:white !important; 
+    }
+
+    /* Remove white background from cards */
+    .card { 
+        background: transparent !important; 
+        padding: 18px;
+        border-radius: 12px;
+        box-shadow: none !important;
+        border: none !important;
+    }
+
+    /* Clear text */
+    h1, h2, h3, p, span, label {
+        color: #062745 !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        text-shadow: none !important;
+    }
+
+    .big-number { 
+        font-size:28px; 
+        font-weight:700; 
+        color:#062745 !important; 
+    }
+
+    /* Buttons */
+    .stButton>button { 
+        background-color: #0b63d6 !important; 
+        color:white !important; 
+        border-radius:10px; 
+        padding:10px 18px;
+        font-weight: 600 !important;
+        border: none !important;
+    }
+    .stButton>button:hover { 
+        background-color:#084ab0 !important; 
+    }
+
+    /* Inputs */
+    .stTextInput>div>div>input { 
+        border-radius:8px !important; 
+        padding:10px !important; 
+    }
+
+    .stSelectbox>div>div>div { 
+        border-radius:8px !important; 
+    }
+
     </style>
     """, unsafe_allow_html=True)
 
