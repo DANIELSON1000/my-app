@@ -22,7 +22,7 @@ def generate_agreement(tenant: dict, landlord: dict):
     pdf = FPDF()
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "AMASEZERANO YO GUKODESHA (KONTRARE)", ln=1, align="C")
+    pdf.cell(0, 10, "AMASEZERANO YO GUKODESHA INZU", ln=1, align="C")
     pdf.ln(8)
 
     pdf.set_font("Arial", size=12)
@@ -42,10 +42,10 @@ def generate_agreement(tenant: dict, landlord: dict):
     pdf.ln(8)
 
     pdf.multi_cell(0, 7,
-        "INGINGO Z'IBANZE:\n"
-        "1. Umukiriya yemera kwishyura ubukode buri kwezi ku gihe.\n"
-        "2. Kubahiriza isuku, kubungabunga ibikoresho n'ibindi biri mu nzu ni inshingano zombi.\n"
-        "3. Iyo umukiriya yatinze kwishyura, nyir'inzu afite uburenganzira bwo gukurikirana.\n"
+        "IKITONDERWA:\n"
+        "1. Umukiriya agomba  kwishyura ubukode buri kwezi ku gihe.\n"
+        "2. Kubahiriza isuku, kubungabunga ibikoresho n'ibindi byubatse inzu ni incingano zawe.\n"
+        "3. Iyo umukiriya yatinze kwishyura , nyir'inzu afite uburenganzira bwo gukurikirana.\n"
     )
     pdf.ln(8)
     pdf.cell(0, 8, f"Itariki: {timestamp_now()}", ln=1)
