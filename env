@@ -1,0 +1,13 @@
+Email (SMTP) settings
+
+SMTP_HOST=smtp.gmail.com SMTP_PORT=587 SMTP_USER=offliqz@gmail.com
+SMTP_PASS=elnj vrcg wuuz eywm
+
+Twilio (optional)
+
+TWILIO_ACCOUNT_SID=your_twilio_sid TWILIO_AUTH_TOKEN=your_twilio_token
+TWILIO_FROM=+250795049051
+
+Admin password (Change this!)
+
+ADMIN_PASSWORD=admin123
