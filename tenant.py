@@ -13,7 +13,7 @@ from database import save_messages as save_msgs_table
 from database import load_tenants as load_tenants_table
 
 def tenant_portal():
-    st.header("Ahantu h'abakiriya (Tenant Portal)")
+    st.header("Tenant Portal")
 
     tenants = load_tenants_table()
     phone = st.text_input("Injiza nomero ya telefone yawe (Login)")
@@ -24,10 +24,11 @@ def tenant_portal():
             st.error("Ntiboneka umukiriya ufite iyo nomero. Reba neza cyangwa hamagara administrator.")
             return
         user = user.iloc[0].to_dict()
-        st.success(f"Mwaramutse {user.get('fullname')}")
+        st.success(f"hello!{user.get('fullname')}")
         st.markdown("---")
 
         # Show info (read-only)
+        
         st.subheader("Amakuru Yawe")
         info = {
             "Amazina yose": user.get("fullname"),
@@ -53,11 +54,11 @@ def tenant_portal():
 
         st.markdown("---")
         # Messages
-        st.subheader("Ohereza Igitekerezo / Ikirego")
+        st.subheader("Ohereza Igitekerezo /Ikifuzo/ikibazo")
         message = st.text_area("Andika ubutumwa bwawe hano")
         if st.button("Ohereza ubutumwa"):
             if not message.strip():
-                st.warning("Andika ubutumwa mbere yo kohereza.")
+                st.warning("Andika ubutumwa mbere yo kohereza.")  
             else:
                 msgs = load_messages()
                 new_id = str(int(msgs["message_id"].astype(int).max()) + 1) if not msgs.empty else "1"
@@ -75,7 +76,7 @@ def tenant_portal():
                 st.success("Ubutumwa bwoherejwe. Administrator azagusubiza.")
         st.markdown("---")
         # View messages
-        st.subheader("Amameypu / Ibisubizo")
+        st.subheader("Ibisubizo")
         msgs = load_messages()
         my_msgs = msgs[msgs["tenant_id"] == str(user.get("tenant_id"))].sort_values("date_sent", ascending=False)
         if my_msgs.empty:
