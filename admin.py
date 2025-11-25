@@ -19,7 +19,7 @@ import database
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
 
 def admin_portal():
-    st.header("Admin Panel (Umuyobozi)")
+    st.header("Admin")
 
     pwd = st.text_input("Injiza ijambo ry'ibanga (password)", type="password")
     if pwd != ADMIN_PASSWORD:
@@ -39,7 +39,7 @@ def admin_portal():
             phone = st.text_input("Nomero ya telefone")
             sex = st.selectbox("Igitsina", ["Gabo","Gore"])
             people = st.number_input("Umubare w'abantu batuye mu nzu", min_value=1, value=1)
-            house_status = st.text_input("Status y'inzu (ex: Icyumba 1)")
+            house_status = st.text_input("ubwoko b'inzu")
             start_date = st.date_input("Itariki y'itangira")
             rent = st.number_input("Amafaranga y'ubukode buri kwezi", min_value=0)
             submitted = st.form_submit_button("Bika umukiriya")
@@ -56,7 +56,7 @@ def admin_portal():
                     "house_status": house_status,
                     "start_date": str(start_date),
                     "rent": str(rent)
-                }, {"name":"Nyir'inzu", "phone":"0780000000", "email":"nyiri@example.com"})
+                }, {"name":"NTAKIRUTIMANA Ezechiel", "phone":"0785609734", "email":"offliqz@gmail.com"})
                 new_row = {
                     "tenant_id": nid,
                     "fullname": fullname,
@@ -74,7 +74,7 @@ def admin_portal():
                 }
                 new_tenants = pd.concat([new_tenants, pd.DataFrame([new_row])], ignore_index=True)
                 save_tenants(new_tenants)
-                st.success("Umukiriya yongewe kandi Kontrare yanditswe (PDF).")
+                st.success("Umukiriya yongewe kandi amasezerano yanditswe (PDF).")
 
     if menu == "Reba abakiriya":
         st.subheader("Urutonde rw'abakiriya")
