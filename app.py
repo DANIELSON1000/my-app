@@ -79,15 +79,16 @@ def local_css():
 local_css()
 
 st.sidebar.title("Menu")
-role = st.sidebar.selectbox("Hitamo uruhare (Role)", ["Tenant (Umukiriya)", "Admin (Umuyobozi)"])
+role = st.sidebar.selectbox("Hitamo", ["Tenant ", "landlord"])
 
-st.title("🏠 Sisitemu yo gucunga abakiriya (Tenant Management)")
+st.title("🏠 Tenant Management")
 
 st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.write("Murakaza neza! Hitamo uruhare rwawe kuri sidebar hanyuma ukore login.")
+st.write("Murakaza neza! ")
 st.markdown("</div>", unsafe_allow_html=True)
 
 if role.startswith("Tenant"):
     tenant_portal()
 else:
     admin_portal()
+
