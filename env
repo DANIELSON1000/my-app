@@ -11,3 +11,5 @@ TWILIO_FROM=+250795049051
 Admin password (Change this!)
 
 ADMIN_PASSWORD=admin123
+SUPABASE_URL=https://tmuycqgyhoiogpzsfyla.supabase.co
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRtdXljcWd5aG9pb2dwenNmeWxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQyNjg4MDUsImV4cCI6MjA3OTg0NDgwNX0.qaPpUWEfZenDD58KN56o4ef4qM4Jux1q6HCobrRZKi4
