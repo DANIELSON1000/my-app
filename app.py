@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Main app entry — Tenant Management System with attractive wallpaper and UI.
+Tenant Management System — full-page wallpaper covering all index
 """
 import streamlit as st
 from tenant import tenant_portal
@@ -13,73 +13,78 @@ st.set_page_config(page_title="Tenant Management System", page_icon="🏠", layo
 # Ensure tenant_files folder exists
 os.makedirs("tenant_files", exist_ok=True)
 
-# Custom CSS for wallpaper and UI
+# Full-page wallpaper and UI styling
 def local_css():
-    st.markdown(f"""
+    st.markdown("""
     <style>
-    /* Full-screen background image */
-    .stApp {{
-        background: url('pictures/landlord.png') no-repeat center center fixed;
-        background-size: cover;
+    /* Full-page background */
+    .stApp {
+        background-image: url('pictures/landlord.png');
+        background-size: cover;          /* Cover entire page */
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;    /* stays fixed when scrolling */
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         color: #062745;
-    }}
+        min-height: 100vh;               /* ensures full height */
+    }
 
-    /* Sidebar styling */
-    [data-testid="stSidebar"] {{
-        background: rgba(11, 37, 69, 0.9) !important;
-        color:white !important;
+    /* Make sidebar transparent to show wallpaper */
+    [data-testid="stSidebar"] {
+        background: rgba(255, 255, 255, 0.85) !important;
+        color: #0b2545 !important;
         font-weight: bold;
         font-size: 16px;
-    }}
+        border-radius: 12px;
+        padding: 20px;
+    }
 
-    /* Transparent card overlay for main content */
-    .card {{
+    /* Overlay card for main content */
+    .card {
         background: rgba(255, 255, 255, 0.85) !important;
-        padding: 25px;
-        border-radius: 15px;
-        box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.2) !important;
+        padding: 30px;
+        border-radius: 20px;
+        box-shadow: 0px 8px 30px rgba(0, 0, 0, 0.2) !important;
         border: none !important;
-        margin-bottom: 20px;
-    }}
+        margin-bottom: 30px;
+    }
 
     /* Headings and text */
-    h1, h2, h3, p, span, label {{
+    h1, h2, h3, p, span, label {
         color: #062745 !important;
-        text-shadow: 1px 1px 2px rgba(255,255,255,0.6);
-    }}
+        text-shadow: 1px 1px 4px rgba(255,255,255,0.7);
+    }
 
     /* Buttons styling */
-    .stButton>button {{
-        background-color: #0b63d6 !important;
+    .stButton>button {
+        background-color: #ff0054 !important;
         color:white !important;
-        border-radius:12px;
-        padding:12px 20px;
+        border-radius: 25px;
+        padding:12px 25px;
         font-weight: 600 !important;
         border: none !important;
-        box-shadow: 0px 2px 6px rgba(0,0,0,0.2);
+        box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
         transition: 0.3s;
-    }}
-    .stButton>button:hover {{
-        background-color:#084ab0 !important;
+    }
+    .stButton>button:hover {
+        background-color:#e60047 !important;
         transform: scale(1.05);
-    }}
+    }
 
     /* Input boxes styling */
     .stTextInput>div>div>input, 
     .stTextArea>div>div>textarea, 
-    .stSelectbox>div>div>div {{
-        border-radius:12px !important;
-        padding:12px !important;
+    .stSelectbox>div>div>div {
+        border-radius:20px !important;
+        padding:14px !important;
         font-size: 16px;
         border: 1px solid #ccc !important;
-    }}
+    }
 
     /* Selectbox hover */
-    .stSelectbox>div>div>div:hover {{
-        border-color: #0b63d6 !important;
-    }}
-
+    .stSelectbox>div>div>div:hover {
+        border-color: #ff0054 !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -89,10 +94,10 @@ local_css()
 st.sidebar.title("🏠 Menu")
 role = st.sidebar.selectbox("Hitamo uruhande rwawe:", ["Tenant", "Admin"])
 
-# Main title with overlay card
+# Main card overlay
 st.markdown("<div class='card'>", unsafe_allow_html=True)
 st.title("Tenant Management System")
-st.write("Murakaza neza!")
+st.write("Murakaza neza! Hitamo uruhande rwawe muri sidebar kugirango utangire.")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # Show portals based on role
