@@ -12,18 +12,60 @@ st.set_page_config(page_title="Tenant Management System", page_icon="🏠", layo
 # Ensure tenant_files folder exists
 os.makedirs("tenant_files", exist_ok=True)
 
-# Custom CSS for attractive UI
+# Custom CSS for attractive UI + background wallpaper
 def local_css():
-    st.markdown("""
+    st.markdown(f"""
     <style>
-    .stApp { background: #eef5ff !important; }
-    [data-testid="stSidebar"] { background: #0b2545 !important; color:white !important; }
-    .card { background: transparent !important; padding: 18px; border-radius: 12px; box-shadow: none !important; border: none !important; }
-    h1, h2, h3, p, span, label { color: #062745 !important; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important; text-shadow: none !important; }
-    .stButton>button { background-color: #0b63d6 !important; color:white !important; border-radius:10px; padding:10px 18px; font-weight: 600 !important; border: none !important; }
-    .stButton>button:hover { background-color:#084ab0 !important; }
-    .stTextInput>div>div>input { border-radius:8px !important; padding:10px !important; }
-    .stSelectbox>div>div>div { border-radius:8px !important; }
+    /* Background image */
+    .stApp {{
+        background: url('pictures/landlord.png') no-repeat center center fixed;
+        background-size: cover;
+    }}
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {{
+        background: #0b2545 !important;
+        color:white !important;
+    }}
+
+    /* Card styling */
+    .card {{
+        background: rgba(255, 255, 255, 0.7) !important;
+        padding: 18px;
+        border-radius: 12px;
+        box-shadow: none !important;
+        border: none !important;
+    }}
+
+    /* Text styling */
+    h1, h2, h3, p, span, label {{
+        color: #062745 !important;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+        text-shadow: none !important;
+    }}
+
+    /* Button styling */
+    .stButton>button {{
+        background-color: #0b63d6 !important;
+        color:white !important;
+        border-radius:10px;
+        padding:10px 18px;
+        font-weight: 600 !important;
+        border: none !important;
+    }}
+    .stButton>button:hover {{
+        background-color:#084ab0 !important;
+    }}
+
+    /* Input styling */
+    .stTextInput>div>div>input {{
+        border-radius:8px !important;
+        padding:10px !important;
+    }}
+
+    .stSelectbox>div>div>div {{
+        border-radius:8px !important;
+    }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -35,7 +77,7 @@ role = st.sidebar.selectbox("Hitamo", ["Tenant", "Admin"])
 st.title("🏠 Tenant Management")
 
 st.markdown("<div class='card'>", unsafe_allow_html=True)
-st.write("Murakaza neza! Hitamo uruhande rwawe muri sidebar.")
+st.write("Murakaza neza!")
 st.markdown("</div>", unsafe_allow_html=True)
 
 if role == "Tenant":
