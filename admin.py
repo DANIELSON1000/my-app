@@ -1,25 +1,31 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 25 15:01:36 2025
-
-@author: ELINA
+Admin portal — saves tenant files to tenant_files/ and lets admin download all files.
 """
-
-# admin.py
 import streamlit as st
 import pandas as pd
-from database import load_tenants, save_tenants, load_messages, save_messages, load_payments, save_payments, next_id, timestamp_now
+import json
+import os
+from database import load_tenants, save_tenants, load_messages, save_messages, load_payments, save_payments, timestamp_now
 from agreement_generator import generate_agreement
 from message_service import send_email, send_sms
-import os
 from dotenv import load_dotenv
 load_dotenv()
-import database
 
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
+TENANT_FILES_DIR = "tenant_files"
+os.makedirs(TENANT_FILES_DIR, exist_ok=True)
+
+def save_tenant_profile_file(tenant_dict):
+    """Save tenant profile as JSON in tenant_files/{phone}.json"""
+    phone = tenant_dict.get("phone", "unknown")
+    filename = os.path.join(TENANT_FILES_DIR, f"{phone}.json")
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(tenant_dict, f, ensure_ascii=False, indent=4)
+    return filename
 
 def admin_portal():
-    st.header("Admin")
+    st.header("Admin (Umuyobozi)")
 
     pwd = st.text_input("Injiza ijambo ry'ibanga (password)", type="password")
     if pwd != ADMIN_PASSWORD:
@@ -29,7 +35,14 @@ def admin_portal():
     st.success("Murakaza neza, Administrator")
     tenants = load_tenants()
 
-    menu = st.sidebar.selectbox("Hitamo icyo ushaka gukora", ["Kongeramo umukiriya", "Reba abakiriya", "Ubutumwa", "Imyishyurire", "Kohereza SMS/Email"])
+    menu = st.sidebar.selectbox("Hitamo icyo ushaka gukora", [
+        "Kongeramo umukiriya",
+        "Reba abakiriya",
+        "Ubutumwa",
+        "Imyishyurire",
+        "Dosiye z'Abakiriya",
+        "Kohereza SMS/Email"
+    ])
 
     if menu == "Kongeramo umukiriya":
         with st.form("add_tenant"):
@@ -43,21 +56,13 @@ def admin_portal():
             start_date = st.date_input("Itariki y'itangira")
             rent = st.number_input("Amafaranga y'ubukode buri kwezi", min_value=0)
             submitted = st.form_submit_button("Bika umukiriya")
+
             if submitted:
                 new_tenants = tenants.copy()
                 nid = str(int(new_tenants["tenant_id"].astype(int).max())+1) if not new_tenants.empty else "1"
-                agreement_path = generate_agreement({
-                    "tenant_id": nid,
-                    "fullname": fullname,
-                    "id_number": id_number,
-                    "phone": phone,
-                    "sex": sex,
-                    "people": str(people),
-                    "house_status": house_status,
-                    "start_date": str(start_date),
-                    "rent": str(rent)
-                }, {"name":"NTAKIRUTIMANA Ezechiel", "phone":"0785609734", "email":"offliqz@gmail.com"})
-                new_row = {
+
+                # build tenant dict
+                tenant_dict = {
                     "tenant_id": nid,
                     "fullname": fullname,
                     "id_number": id_number,
@@ -69,12 +74,24 @@ def admin_portal():
                     "rent": str(rent),
                     "username": phone,
                     "password": "1234",
-                    "agreement_file": agreement_path,
                     "created_at": timestamp_now()
                 }
+
+                # generate agreement PDF (saved by agreement_generator)
+                agreement_path = generate_agreement(tenant_dict, {"name":"NTAKIRUTIMANA Ezechiel", "phone":"0785609734", "email":"offliqz@gmail.com"})
+                tenant_dict["agreement_file"] = agreement_path
+
+                # save JSON profile to tenant_files/
+                profile_path = save_tenant_profile_file(tenant_dict)
+
+                # append to tenants table and save
+                new_row = tenant_dict.copy()
+                new_row["agreement_file"] = str(agreement_path)
                 new_tenants = pd.concat([new_tenants, pd.DataFrame([new_row])], ignore_index=True)
                 save_tenants(new_tenants)
+
                 st.success("Umukiriya yongewe kandi amasezerano yanditswe (PDF).")
+                st.info(f"Files saved: {agreement_path}, {profile_path}")
 
     if menu == "Reba abakiriya":
         st.subheader("Urutonde rw'abakiriya")
@@ -82,7 +99,6 @@ def admin_portal():
         st.dataframe(tenants)
 
         if st.button("Refresha"):
-            tenants = load_tenants()
             st.experimental_rerun()
 
     if menu == "Ubutumwa":
@@ -108,13 +124,11 @@ def admin_portal():
                         msgs.at[i,"date_reply"] = timestamp_now()
                         msgs.at[i,"status"] = "replyed"
                         save_messages(msgs)
-                        # send email or sms if tenant has contact
+                        # send SMS to tenant
                         tenants = load_tenants()
                         tenant = tenants[tenants["tenant_id"]==msgs.at[i,"tenant_id"]]
                         if not tenant.empty:
                             t = tenant.iloc[0]
-                            # try email first (if you store tenant email in future)
-                            # Here we'll send SMS
                             ok, info = send_sms(t["phone"], f"Reply from Landlord: {reply}")
                             if ok:
                                 st.success("Reply saved kandi SMS yoherejwe")
@@ -138,6 +152,18 @@ def admin_portal():
                 payments = pd.concat([payments, pd.DataFrame([new_row])], ignore_index=True)
                 save_payments(payments)
                 st.success("Payment yanditswe")
+
+    if menu == "Dosiye z'Abakiriya":
+        st.subheader("📂 Dosiye zose z'abakiriya (Admin)")
+        files = sorted(os.listdir(TENANT_FILES_DIR))
+        if not files:
+            st.info("Nta dosiye muri tenant_files/")
+        else:
+            for f in files:
+                path = os.path.join(TENANT_FILES_DIR, f)
+                st.write("•", f)
+                with open(path, "rb") as file:
+                    st.download_button(label=f"Kuramo {f}", data=file, file_name=f)
 
     if menu == "Kohereza SMS/Email":
         st.subheader("Ohereza SMS cyangwa Email by'intangarugero")
