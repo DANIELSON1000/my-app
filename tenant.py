@@ -22,6 +22,7 @@ def tenant_portal():
         if user.empty:
             st.error("Ntiboneka umukiriya ufite iyo nomero. Reba neza cyangwa hamagara administrator.")
             return
+
         user = user.iloc[0].to_dict()
         st.success(f"Mwaramutse {user.get('fullname')}")
         st.markdown("---")
@@ -41,6 +42,7 @@ def tenant_portal():
         st.table(pd.DataFrame(list(info.items()), columns=["Igice","Agaciro"]))
 
         st.markdown("---")
+
         # Payment status
         st.subheader("Status y'Ubwishyu")
         payments = load_payments()
@@ -51,12 +53,13 @@ def tenant_portal():
             st.dataframe(my_pay)
 
         st.markdown("---")
+
         # Messages
-        st.subheader("Ohereza Igitekerezo /Ikifuzo/ikibazo")
+        st.subheader("Ohereza Igitekerezo /Ikifuzo/Ikibazo")
         message = st.text_area("Andika ubutumwa bwawe hano")
         if st.button("Ohereza ubutumwa"):
             if not message.strip():
-                st.warning("Andika ubutumwa mbere yo kohereza.")  
+                st.warning("Andika ubutumwa mbere yo kohereza.")
             else:
                 msgs = load_messages()
                 new_id = str(int(msgs["message_id"].astype(int).max()) + 1) if not msgs.empty else "1"
@@ -72,8 +75,10 @@ def tenant_portal():
                 msgs = pd.concat([msgs, pd.DataFrame([new_row])], ignore_index=True)
                 save_msgs_table(msgs)
                 st.success("Ubutumwa bwoherejwe. Administrator azagusubiza.")
+
         st.markdown("---")
-        # View messages
+
+        # Replies
         st.subheader("Ibisubizo")
         msgs = load_messages()
         my_msgs = msgs[msgs["tenant_id"] == str(user.get("tenant_id"))].sort_values("date_sent", ascending=False)
@@ -83,16 +88,34 @@ def tenant_portal():
             st.dataframe(my_msgs[["message","reply","date_sent","date_reply","status"]])
 
         st.markdown("---")
-        # Show tenant files (only their files)
+
+        # Tenant files section
         st.subheader("📂 Dosiye zawe zibitswe")
+
         files = sorted(os.listdir(TENANT_FILES_DIR))
         found = False
+
+        # 1️⃣ DOWNLOAD AGREEMENT PDF (if exists)
+        agreement_path = user.get("agreement_file")
+
+        if agreement_path and os.path.exists(agreement_path):
+            st.write("• Amasezerano (Agreement PDF)")
+            with open(agreement_path, "rb") as pdf:
+                st.download_button(
+                    label="Kuramo Amasezerano (PDF)",
+                    data=pdf,
+                    file_name=os.path.basename(agreement_path)
+                )
+            found = True
+
+        # 2️⃣ DOWNLOAD JSON + other files
         for f in files:
             if str(user.get("phone")) in f or str(user.get("tenant_id")) in f:
-                found = True
                 path = os.path.join(TENANT_FILES_DIR, f)
                 st.write("•", f)
                 with open(path, "rb") as file:
                     st.download_button(label=f"Kuramo {f}", data=file, file_name=f)
+                found = True
+
         if not found:
             st.info("Nta dosiye yawe yabonetse muri server (tenant_files/).")
