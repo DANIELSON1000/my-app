@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue Nov 25 15:02:33 2025
-
-@author: ELINA
+tenant.py — tenant can login with phone and download only their files from tenant_files/
 """
-
-# tenant.py
 import streamlit as st
 import pandas as pd
+import os
 from database import load_tenants, save_messages, load_messages, timestamp_now, load_payments
-from database import save_messages as save_msgs_table
-from database import load_tenants as load_tenants_table
+from database import save_messages as save_msgs_table, load_tenants as load_tenants_table
+
+TENANT_FILES_DIR = "tenant_files"
+os.makedirs(TENANT_FILES_DIR, exist_ok=True)
 
 def tenant_portal():
-    st.header("Tenant Portal")
+    st.header("Tenant Portal (Urubuga rw'Umukiriya)")
 
     tenants = load_tenants_table()
     phone = st.text_input("Injiza nomero ya telefone yawe (Login)")
@@ -24,11 +23,10 @@ def tenant_portal():
             st.error("Ntiboneka umukiriya ufite iyo nomero. Reba neza cyangwa hamagara administrator.")
             return
         user = user.iloc[0].to_dict()
-        st.success(f"hello!{user.get('fullname')}")
+        st.success(f"Mwaramutse {user.get('fullname')}")
         st.markdown("---")
 
         # Show info (read-only)
-        
         st.subheader("Amakuru Yawe")
         info = {
             "Amazina yose": user.get("fullname"),
@@ -83,3 +81,18 @@ def tenant_portal():
             st.info("Nta butumwa bwawe bubonetse.")
         else:
             st.dataframe(my_msgs[["message","reply","date_sent","date_reply","status"]])
+
+        st.markdown("---")
+        # Show tenant files (only their files)
+        st.subheader("📂 Dosiye zawe zibitswe")
+        files = sorted(os.listdir(TENANT_FILES_DIR))
+        found = False
+        for f in files:
+            if str(user.get("phone")) in f or str(user.get("tenant_id")) in f:
+                found = True
+                path = os.path.join(TENANT_FILES_DIR, f)
+                st.write("•", f)
+                with open(path, "rb") as file:
+                    st.download_button(label=f"Kuramo {f}", data=file, file_name=f)
+        if not found:
+            st.info("Nta dosiye yawe yabonetse muri server (tenant_files/).")
