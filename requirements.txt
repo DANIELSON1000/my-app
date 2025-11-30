@@ -4,3 +4,5 @@ python-dotenv
 fpdf
 twilio
 python-dateutil
+
+openpyxl
