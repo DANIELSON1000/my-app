@@ -109,7 +109,7 @@ role = st.sidebar.selectbox("Hitamo uruhande rwawe:", ["Tenant", "Admin"])
 # ---------------------------------------
 st.markdown("<div class='main-card'>", unsafe_allow_html=True)
 st.title("Tenant Management System")
-st.write("Murakaza neza!")
+st.write("Murakaza neza! Hitamo uruhande rwawe muri sidebar kugirango utangire.")
 st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------------------------------------
