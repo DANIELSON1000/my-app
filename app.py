@@ -23,7 +23,7 @@ def local_css():
        ================================ */
     .stApp {
         background-image: linear-gradient(rgba(255, 255, 255, 0.15), rgba(255, 255, 255, 0.15)), 
-                          url('https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/landlord.png');
+                          url('landlord.png');
         background-size: cover;
         background-repeat: no-repeat;
         background-position: center;
