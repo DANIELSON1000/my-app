@@ -48,12 +48,12 @@ def admin_portal():
     # ------------------------
     # LOGIN
     # ------------------------
-    pwd = st.text_input("Injiza ijambo ry'ibanga ", type="password")
+    pwd = st.text_input("Injiza ijambo ry'ibanga (Admin Password)", type="password")
     if pwd != ADMIN_PASSWORD:
         st.warning("⚠️ Ijambo ry'ibanga si ryo")
         return
 
-    st.success("Murakaza neza")
+    st.success("Murakaza neza, Administrator 👍")
     tenants = load_tenants()
 
     # ------------------------
