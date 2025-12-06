@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 tenant.py — tenant can login with phone and download only their files from tenant_files/
+Includes payment countdown dashboard
 """
 import streamlit as st
 import pandas as pd
 import os
+import datetime
 from database import load_tenants, save_messages, load_messages, timestamp_now, load_payments
 from database import save_messages as save_msgs_table, load_tenants as load_tenants_table
 
@@ -18,16 +20,18 @@ def tenant_portal():
     phone = st.text_input("Injiza nomero ya telefone yawe (Login)")
 
     if st.button("Injira"):
-        user = tenants[tenants["phone"] == phone]
-        if user.empty:
+        user_df = tenants[tenants["phone"] == phone]
+        if user_df.empty:
             st.error("Ntiboneka umukiriya ufite iyo nomero. Reba neza cyangwa hamagara administrator.")
             return
 
-        user = user.iloc[0].to_dict()
+        user = user_df.iloc[0].to_dict()
         st.success(f"Mwaramutse {user.get('fullname')}")
         st.markdown("---")
 
-        # Show info (read-only)
+        # ----------------------------
+        # Show tenant info (read-only)
+        # ----------------------------
         st.subheader("Amakuru Yawe")
         info = {
             "Amazina yose": user.get("fullname"),
@@ -43,7 +47,35 @@ def tenant_portal():
 
         st.markdown("---")
 
-        # Payment status
+        # ----------------------------
+        # Payment countdown & status
+        # ----------------------------
+        st.subheader("⏰ Countdown y'Ubwishyu")
+        try:
+            start_date = datetime.date.fromisoformat(user["start_date"])
+            due_day = start_date.day
+            today = datetime.date.today()
+            this_month_due = today.replace(day=due_day)
+            next_due = this_month_due if this_month_due >= today else (
+                datetime.date(this_month_due.year + 1, 1, due_day) if this_month_due.month == 12
+                else datetime.date(this_month_due.year, this_month_due.month + 1, due_day)
+            )
+            days_left = (next_due - today).days
+
+            if days_left < 0:
+                st.error(f"❗ Hari {abs(days_left)} days urenze due date! Mwihutire kwishyura.")
+            elif days_left == 0:
+                st.warning(f"⚠️ LEAKI UYU MUNSI — TODAY is the due date ({next_due})!")
+            else:
+                st.info(f"📅 Mufite **{days_left} days** mbere yo kwishyura (Due: {next_due})")
+        except:
+            st.warning("Date ya payment ntiboneka neza.")
+
+        st.markdown("---")
+
+        # ----------------------------
+        # Payment history
+        # ----------------------------
         st.subheader("Status y'Ubwishyu")
         payments = load_payments()
         my_pay = payments[payments["tenant_id"] == str(user.get("tenant_id"))]
@@ -54,7 +86,9 @@ def tenant_portal():
 
         st.markdown("---")
 
+        # ----------------------------
         # Messages
+        # ----------------------------
         st.subheader("Ohereza Igitekerezo /Ikifuzo/Ikibazo")
         message = st.text_area("Andika ubutumwa bwawe hano")
         if st.button("Ohereza ubutumwa"):
@@ -78,7 +112,9 @@ def tenant_portal():
 
         st.markdown("---")
 
-        # Replies
+        # ----------------------------
+        # Replies from admin
+        # ----------------------------
         st.subheader("Ibisubizo")
         msgs = load_messages()
         my_msgs = msgs[msgs["tenant_id"] == str(user.get("tenant_id"))].sort_values("date_sent", ascending=False)
@@ -89,15 +125,15 @@ def tenant_portal():
 
         st.markdown("---")
 
+        # ----------------------------
         # Tenant files section
+        # ----------------------------
         st.subheader("📂 Dosiye zawe zibitswe")
-
         files = sorted(os.listdir(TENANT_FILES_DIR))
         found = False
 
         # 1️⃣ DOWNLOAD AGREEMENT PDF (if exists)
         agreement_path = user.get("agreement_file")
-
         if agreement_path and os.path.exists(agreement_path):
             st.write("• Amasezerano (Agreement PDF)")
             with open(agreement_path, "rb") as pdf:
