@@ -472,3 +472,88 @@ def admin_portal():
 
 if __name__ == "__main__":
     admin_portal()
+
+
+# ======================================================================
+# 5) EDIT TENANT — CLEAN & FINAL VERSION
+# ======================================================================
+
+elif menu == "Hindura amakuru y'umukiriya":
+
+    st.subheader("✏️ Hindura amakuru y'umukiriya")
+
+    edit_id = st.text_input("Injiza Tenant ID ushaka guhindura")
+
+    if st.button("Shaka Umukiriya"):
+
+        if edit_id.strip() == "":
+            st.warning("Injiza Tenant ID")
+        elif edit_id not in tenants["tenant_id"].astype(str).values:
+            st.error("Tenant ID ntiboneka muri system.")
+        else:
+            # Load tenant data
+            t = tenants[tenants["tenant_id"].astype(str) == edit_id].iloc[0]
+            st.success(f"Uhitanye: {t['fullname']}")
+
+            # -------------------- EDIT FORM --------------------
+            with st.form("edit_tenant_form"):
+
+                fullname = st.text_input("Amazina yose y'umukiriya", t["fullname"])
+                id_number = st.text_input("Indangamuntu (ID)", t.get("id_number", ""))
+                phone = st.text_input("Nomero ya telefone", t.get("phone", ""))
+                email = st.text_input("Email", t.get("email", ""))
+
+                sex = st.selectbox(
+                    "Igitsina",
+                    ["Gabo", "Gore"],
+                    index=0 if t["sex"] == "Gabo" else 1
+                )
+
+                people = st.number_input(
+                    "Abantu batuye mu nzu",
+                    min_value=1,
+                    value=int(t.get("people", 1))
+                )
+
+                house_status = st.text_input(
+                    "Ubwoko bw'inzu",
+                    t.get("house_status", "")
+                )
+
+                # FIX start date parsing
+                from datetime import date
+                try:
+                    start_dt = date.fromisoformat(t["start_date"])
+                except:
+                    start_dt = date.today()
+
+                start_date = st.date_input("Itariki atangiye kubamo", start_dt)
+
+                rent = st.number_input(
+                    "Amafaranga y'ubukode (buri kwezi)",
+                    min_value=0,
+                    value=int(t.get("rent", 0))
+                )
+
+                submitted = st.form_submit_button("Hindura amakuru")
+
+                if submitted:
+                    # Update data in dataframe
+                    tenants.loc[
+                        tenants["tenant_id"].astype(str) == edit_id,
+                        ["fullname", "id_number", "phone", "email",
+                         "sex", "people", "house_status", "start_date", "rent"]
+                    ] = [
+                        fullname, id_number, phone, email, sex,
+                        str(people), house_status, str(start_date), str(rent)
+                    ]
+
+                    # Save tenant profile PDF/JSON
+                    updated_dict = tenants[tenants["tenant_id"].astype(str) == edit_id].iloc[0].to_dict()
+                    save_tenant_profile_file(updated_dict)
+
+                    # Save full tenants list
+                    save_tenants(tenants)
+
+                    st.success("✔️ Amakuru y'umukiriya yahinduwe neza!")
+
