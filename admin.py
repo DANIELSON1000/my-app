@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Admin portal — manages tenants, payments, messages, reminders, and file downloads.
-All tenant files are stored securely inside tenant_files/
+Full single-file Admin + Tenant portal (Option A) in Kinyarwanda.
+Run with: streamlit run app.py
 """
 import os
 import json
@@ -12,7 +12,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Try to import user modules (if they exist). If some are missing, provide safe fallbacks.
+# ----------------------------
+# Streamlit page config
+# ----------------------------
+st.set_page_config(
+    page_title="Rental Management System",
+    layout="wide",
+    page_icon="🏠"
+)
+
+# ----------------------------
+# Try to import existing modules, otherwise provide safe fallbacks
+# ----------------------------
 try:
     from database import (
         load_tenants,
@@ -24,14 +35,12 @@ try:
         timestamp_now
     )
 except Exception:
-    # Fallback simple CSV/JSON implementations
     def timestamp_now():
         return datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     def load_tenants():
         if os.path.exists("tenants.csv"):
             return pd.read_csv("tenants.csv", dtype=str)
-        # Provide an empty dataframe with expected columns
         cols = ["tenant_id","fullname","id_number","phone","email","sex","people","house_status","start_date","rent","agreement_file","created_at"]
         return pd.DataFrame(columns=cols)
 
@@ -56,50 +65,63 @@ except Exception:
     def save_payments(df):
         df.to_csv("payments.csv", index=False)
 
-# agreement generator
 try:
     from agreement_generator import generate_agreement
 except Exception:
     def generate_agreement(tenant, landlord):
-        # create a simple placeholder file and return its path
-        TENANT_FILES_DIR = "tenant_files"
-        os.makedirs(TENANT_FILES_DIR, exist_ok=True)
-        pid = tenant.get("tenant_id", tenant.get("id_number", "unknown"))
-        path = os.path.join(TENANT_FILES_DIR, f"{pid}_agreement.pdf")
-        # Write a small placeholder so download works
+        os.makedirs("tenant_files", exist_ok=True)
+        pid = tenant.get("tenant_id") or tenant.get("id_number") or "unknown"
+        path = os.path.join("tenant_files", f"{pid}_agreement.pdf")
         with open(path, "wb") as f:
             f.write(b"%PDF-1.4\n% Placeholder agreement\n")
         return path
 
-# message service (sms/email)
 try:
     from message_service import send_email, send_sms
 except Exception:
     def send_sms(phone, text):
-        # Fake send: return ok True and info string
         return True, "sms-fake"
     def send_email(email, subject, body):
         return True, "email-fake"
 
-# Admin password from .env (or default)
+# ----------------------------
+# Globals
+# ----------------------------
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-
-# TENANT FILES location
 TENANT_FILES_DIR = "tenant_files"
 os.makedirs(TENANT_FILES_DIR, exist_ok=True)
 
-# Utility: save tenant profile JSON into tenant_files/<tenant_id>.json
+# ----------------------------
+# Helpers
+# ----------------------------
+def ensure_tenants_columns(df):
+    expected = ["tenant_id","fullname","id_number","phone","email","sex","people","house_status","start_date","rent","agreement_file","created_at"]
+    for c in expected:
+        if c not in df.columns:
+            df[c] = ""
+    return df
+
+def gen_new_tenant_id(tenants_df):
+    if tenants_df.empty:
+        return "1"
+    ids = tenants_df["tenant_id"].astype(str).str.extract(r"(\d+)").dropna()
+    if ids.empty:
+        return str(len(tenants_df) + 1)
+    try:
+        maxn = ids.astype(int).max().values[0]
+        return str(int(maxn) + 1)
+    except Exception:
+        return str(len(tenants_df) + 1)
+
 def save_tenant_profile_file(tenant_dict):
     tenant_id = str(tenant_dict.get("tenant_id") or tenant_dict.get("id_number") or tenant_dict.get("phone"))
     path = os.path.join(TENANT_FILES_DIR, f"{tenant_id}.json")
     with open(path, "w", encoding="utf-8") as f:
         json.dump(tenant_dict, f, ensure_ascii=False, indent=4)
-    # ensure tenant-specific folder exists
     tenant_folder = os.path.join(TENANT_FILES_DIR, tenant_id)
     os.makedirs(tenant_folder, exist_ok=True)
     return path
 
-# Helper: read tenant json file if exists
 def load_tenant_profile_file(tenant_id):
     path = os.path.join(TENANT_FILES_DIR, f"{tenant_id}.json")
     if os.path.exists(path):
@@ -108,12 +130,153 @@ def load_tenant_profile_file(tenant_id):
     return None
 
 # ----------------------------
-# ADMIN PORTAL
+# Tenant portal function
+# ----------------------------
+def tenant_portal():
+    st.header("Tenant Portal (Urubuga rw'Umukiriya)")
+
+    tenants = load_tenants()
+    tenants = ensure_tenants_columns(tenants)
+
+    phone = st.text_input("Injiza nomero ya telefone yawe (Login)")
+
+    if st.button("Injira"):
+        if phone.strip() == "":
+            st.warning("Injiza nomero ya telefone")
+            return
+        user_df = tenants[tenants["phone"] == phone]
+        if user_df.empty:
+            st.error("Ntiboneka umukiriya ufite iyo nomero. Reba neza cyangwa hamagara administrator.")
+            return
+
+        user = user_df.iloc[0].to_dict()
+        tenant_id = str(user.get("tenant_id"))
+        st.success(f"Mwaramutse {user.get('fullname')}")
+        st.markdown("---")
+
+        # Show tenant info
+        st.subheader("Amakuru Yawe")
+        info = {
+            "Amazina yose": user.get("fullname"),
+            "Indangamuntu": user.get("id_number"),
+            "Telefone": user.get("phone"),
+            "Email": user.get("email"),
+            "Igitsina": user.get("sex"),
+            "Abatuye mu nzu": user.get("people"),
+            "Status y'inzu": user.get("house_status"),
+            "Itariki y'itangira": user.get("start_date"),
+            "Amafaranga buri kwezi": user.get("rent")
+        }
+        st.table(pd.DataFrame(list(info.items()), columns=["Igice","Agaciro"]))
+        st.markdown("---")
+
+        # Payment countdown
+        st.subheader("⏰ Countdown y'Ubwishyu")
+        try:
+            start_date = datetime.date.fromisoformat(user["start_date"])
+            due_day = start_date.day
+            today = datetime.date.today()
+            try:
+                this_month_due = today.replace(day=due_day)
+            except ValueError:
+                last_day = (today.replace(day=1) + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+                this_month_due = last_day
+            next_due = this_month_due if this_month_due >= today else (
+                datetime.date(this_month_due.year + 1, 1, due_day) if this_month_due.month == 12
+                else datetime.date(this_month_due.year, this_month_due.month + 1, due_day)
+            )
+            days_left = (next_due - today).days
+            if days_left < 0:
+                st.error(f"❗ Hari {abs(days_left)} iminsi urenze due date! Mwihutire kwishyura.")
+            elif days_left == 0:
+                st.warning(f"⚠️ LEAKI UYU MUNSI — TODAY is the due date ({next_due})!")
+            else:
+                st.info(f"📅 Mufite **{days_left} iminsi** mbere yo kwishyura (Due: {next_due})")
+        except Exception:
+            st.warning("Date ya payment ntiboneka neza.")
+
+        st.markdown("---")
+        # Payment history
+        st.subheader("Status y'Ubwishyu")
+        payments = load_payments()
+        my_pay = payments[payments["tenant_id"].astype(str) == tenant_id] if not payments.empty else pd.DataFrame()
+        if my_pay.empty:
+            st.info("Nta makuru y'ubwishyu aboneka.")
+        else:
+            st.dataframe(my_pay)
+
+        st.markdown("---")
+        # Messages
+        st.subheader("Ohereza Igitekerezo /Ikifuzo/Ikibazo")
+        message = st.text_area("Andika ubutumwa bwawe hano")
+        if st.button("Ohereza ubutumwa"):
+            if not message.strip():
+                st.warning("Andika ubutumwa mbere yo kohereza.")
+            else:
+                msgs = load_messages()
+                new_id = str(int(msgs["message_id"].astype(int).max()) + 1) if (not msgs.empty and msgs["message_id"].astype(str).str.isnumeric().any()) else "1"
+                new_row = {
+                    "message_id": new_id,
+                    "tenant_id": tenant_id,
+                    "message": message,
+                    "reply": "",
+                    "date_sent": timestamp_now(),
+                    "date_reply": "",
+                    "status": "sent"
+                }
+                msgs = pd.concat([msgs, pd.DataFrame([new_row])], ignore_index=True)
+                save_messages(msgs)
+                st.success("Ubutumwa bwoherejwe. Administrator azagusubiza.")
+
+        st.markdown("---")
+        # Replies
+        st.subheader("Ibisubizo")
+        msgs = load_messages()
+        my_msgs = msgs[msgs["tenant_id"].astype(str) == tenant_id].sort_values("date_sent", ascending=False) if not msgs.empty else pd.DataFrame()
+        if my_msgs.empty:
+            st.info("Nta butumwa bwawe bubonetse.")
+        else:
+            st.dataframe(my_msgs[["message","reply","date_sent","date_reply","status"]])
+
+        st.markdown("---")
+        # Tenant files (only theirs)
+        st.subheader("📂 Dosiye zawe zibitswe")
+        found = False
+
+        # Agreement (from record)
+        agreement_path = user.get("agreement_file")
+        if agreement_path and os.path.exists(agreement_path):
+            st.write("• Amasezerano (Agreement PDF)")
+            with open(agreement_path, "rb") as pdf:
+                st.download_button(
+                    label="Kuramo Amasezerano (PDF)",
+                    data=pdf,
+                    file_name=os.path.basename(agreement_path),
+                    mime="application/pdf"
+                )
+            found = True
+
+        # Files in tenant folder
+        tenant_folder = os.path.join(TENANT_FILES_DIR, tenant_id)
+        if os.path.exists(tenant_folder):
+            files = sorted(os.listdir(tenant_folder))
+            for f in files:
+                path = os.path.join(tenant_folder, f)
+                if os.path.isfile(path):
+                    st.write("•", f)
+                    with open(path, "rb") as file:
+                        st.download_button(label=f"Kuramo {f}", data=file, file_name=f)
+                    found = True
+
+        if not found:
+            st.info("Nta dosiye yawe ibitswe muri server (tenant_files/).")
+
+# ----------------------------
+# Admin portal function
 # ----------------------------
 def admin_portal():
     st.header("👨‍💼 Ubuyobozi — Admin Portal")
 
-    # LOGIN
     pwd = st.text_input("Injiza ijambo ry'ibanga (Admin Password)", type="password")
     if pwd != ADMIN_PASSWORD:
         st.warning("⚠️ Ijambo ry'ibanga si ryo")
@@ -121,32 +284,25 @@ def admin_portal():
 
     st.success("Murakaza neza, Administrator 👍")
 
-    # Load datasets (from database module or fallback)
     tenants = load_tenants()
+    tenants = ensure_tenants_columns(tenants)
     messages = load_messages()
     payments = load_payments()
 
-    # Ensure tenants DF has expected columns (avoid KeyError)
-    expected_tenant_cols = ["tenant_id","fullname","id_number","phone","email","sex","people","house_status","start_date","rent","agreement_file","created_at"]
-    for c in expected_tenant_cols:
-        if c not in tenants.columns:
-            tenants[c] = ""
-
-    # MENU
-    menu = st.sidebar.selectbox("Hitamo icyo ushaka gukora", [
-        "Kongeramo umukiriya",
-        "Reba abakiriya",
-        "Ubutumwa",
+    menu = st.sidebar.selectbox("MENU", [
+        "Kongeramo Umukiriya",
+        "Reba Abakiriya",
+        "Hindura Umukiriya",
         "Imyishyurire",
         "Payment Monitoring",
-        "Dosiye z'Abakiriya",
-        "Kohereza SMS/Email"
+        "Ubutumwa",
+        "Gucunga Dosiye z'Abakiriya",
+        "Ohereza SMS/Email",
+        "Settings"
     ])
 
-    # ======================
-    # 1) ADD TENANT
-    # ======================
-    if menu == "Kongeramo umukiriya":
+    # 1) Add Tenant
+    if menu == "Kongeramo Umukiriya":
         st.subheader("🧍‍♂️ Kongeramo umukiriya mushya")
         with st.form("add_tenant"):
             fullname = st.text_input("Amazina yose y'umukiriya")
@@ -162,8 +318,7 @@ def admin_portal():
 
         if submitted:
             new_tenants = tenants.copy()
-            new_id = str(int(new_tenants["tenant_id"].astype(int).max()) + 1) if (not new_tenants.empty and new_tenants["tenant_id"].astype(str).str.isnumeric().any()) else "1"
-
+            new_id = gen_new_tenant_id(new_tenants)
             tenant_dict = {
                 "tenant_id": new_id,
                 "fullname": fullname,
@@ -175,48 +330,30 @@ def admin_portal():
                 "house_status": house_status,
                 "start_date": str(start_date),
                 "rent": str(rent),
-                "username": phone,
-                "password": "1234",
+                "agreement_file": "",
                 "created_at": timestamp_now()
             }
-
-            # generate agreement file (uses your generator or fallback)
-            AGREEMENT_LANDLORD = {
-                "name": "NTAKIRUTIMANA EZECHIEL",
-                "phone": "0785042128",
-                "email": "offliqz@gmail.com"
-            }
-            try:
-                pdf_path = generate_agreement(tenant_dict, AGREEMENT_LANDLORD)
-            except Exception as e:
-                st.warning("Agreement generator failed; using placeholder.")
-                pdf_path = generate_agreement(tenant_dict, AGREEMENT_LANDLORD)
-
+            landlord = {"name":"NTAKIRUTIMANA EZECHIEL","phone":"0785042128","email":"offliqz@gmail.com"}
+            pdf_path = generate_agreement(tenant_dict, landlord)
             tenant_dict["agreement_file"] = pdf_path
-
-            # save profile JSON
             profile_path = save_tenant_profile_file(tenant_dict)
-
-            # append to tenants dataframe and persist
             new_tenants = pd.concat([new_tenants, pd.DataFrame([tenant_dict])], ignore_index=True)
             save_tenants(new_tenants)
-            tenants = new_tenants  # update in-memory
-
             st.success("Umukiriya yongewe neza!")
             st.info(f"PDF Agreement: {pdf_path}")
             st.info(f"Dosiye JSON: {profile_path}")
 
-    # ======================
-    # 2) VIEW TENANTS (and delete)
-    # ======================
-    elif menu == "Reba abakiriya":
+    # -------------------------
+    # 2) View Tenants
+    # -------------------------
+    elif menu == "Reba Abakiriya":
         st.subheader("📋 Urutonde rw'abakiriya bose")
         tenants = load_tenants()
+        tenants = ensure_tenants_columns(tenants)
         if tenants.empty:
             st.info("Nta tenants zibitswe.")
         else:
             st.dataframe(tenants.reset_index(drop=True))
-
         st.write("---")
         st.write("### 🗑️ Gusiba umukiriya")
         tenant_to_delete = st.text_input("Shyiramo Tenant ID yo gusiba")
@@ -228,86 +365,78 @@ def admin_portal():
             else:
                 tenants = tenants[tenants["tenant_id"].astype(str) != tenant_to_delete]
                 save_tenants(tenants)
-                # remove profile json if exists
                 profile_json = os.path.join(TENANT_FILES_DIR, f"{tenant_to_delete}.json")
                 if os.path.exists(profile_json):
                     os.remove(profile_json)
+                folder = os.path.join(TENANT_FILES_DIR, tenant_to_delete)
+                if os.path.exists(folder):
+                    try:
+                        for f in os.listdir(folder):
+                            os.remove(os.path.join(folder, f))
+                        os.rmdir(folder)
+                    except Exception:
+                        pass
                 st.success(f"Tenant ID {tenant_to_delete} yasibwe neza!")
                 tenants = load_tenants()
 
-    # ======================
-    # 3) MESSAGES
-    # ======================
-    elif menu == "Ubutumwa":
-        st.subheader("✉️ Ubutumwa bw'abakiriya")
-        msgs = load_messages()
-        if msgs.empty:
-            st.info("Nta butumwa buraboneka ubu.")
-        else:
-            st.dataframe(msgs)
+    # -------------------------
+    # 3) Edit Tenant
+    # -------------------------
+    elif menu == "Hindura Umukiriya":
+        st.subheader("✏️ Hindura amakuru y'umukiriya")
+        st.write("Shyiramo Tenant ID ushaka guhindura, hanyuma kanda **Shaka Umukiriya**")
 
-            st.write("---")
-            sel = st.text_input("Andika message_id ushaka gusubiza")
-            reply = st.text_area("Andika igisubizo hano")
-            if st.button("Ohereza Igisubizo"):
-                if not sel.strip():
-                    st.warning("Injiza message_id")
-                else:
-                    msgs = msgs.copy()
-                    idx_list = msgs.index[msgs["message_id"].astype(str) == str(sel)].tolist()
-                    if not idx_list:
-                        st.error("Message ID ntiboneka")
-                    else:
-                        i = idx_list[0]
-                        msgs.at[i, "reply"] = reply
-                        msgs.at[i, "date_reply"] = timestamp_now()
-                        msgs.at[i, "status"] = "replyed"
-                        save_messages(msgs)
-                        tenant_id = msgs.at[i, "tenant_id"]
-                        # fetch tenant phone/email safely
-                        try:
-                            t = tenants[tenants["tenant_id"].astype(str) == str(tenant_id)].iloc[0]
-                            if "phone" in t and pd.notna(t["phone"]) and t["phone"]:
-                                send_sms(t["phone"], f"Igisubizo: {reply}")
-                            if "email" in t and pd.notna(t["email"]) and t["email"]:
-                                send_email(t["email"], "Ibisubizo by'ubutumwa", reply)
-                        except Exception:
-                            pass
-                        st.success("Reply yoherejwe neza!")
+        edit_id = st.text_input("Injiza Tenant ID ushaka guhindura")
 
-    # ======================
-    # 4) PAYMENTS
-    # ======================
+        if st.button("Shaka Umukiriya"):
+            st.session_state["edit_search_id"] = edit_id.strip()
+
+        search_id = st.session_state.get("edit_search_id", "")
+
+        if search_id:
+            if search_id not in tenants["tenant_id"].astype(str).values:
+                st.error("Tenant ID ntiboneka muri system.")
+            else:
+                t = tenants[tenants["tenant_id"].astype(str) == search_id].iloc[0]
+                st.success(f"Uhitanye: {t['fullname']}")
+
+                with st.form("edit_tenant_form"):
+                    fullname = st.text_input("Amazina yose y'umukiriya", t["fullname"])
+                    id_number = st.text_input("Indangamuntu (ID)", t.get("id_number", ""))
+                    phone = st.text_input("Nomero ya telefone", t.get("phone", ""))
+                    email = st.text_input("Email", t.get("email", ""))
+                    sex = st.selectbox("Igitsina", ["Gabo", "Gore"], index=0 if t["sex"]=="Gabo" else 1)
+                    people = st.number_input("Abantu batuye mu nzu", min_value=1, value=int(t.get("people",1)))
+                    house_status = st.text_input("Ubwoko bw'inzu", t.get("house_status",""))
+                    try:
+                        sd = datetime.date.fromisoformat(t["start_date"])
+                    except Exception:
+                        sd = datetime.date.today()
+                    start_date = st.date_input("Itariki atangiye kubamo", sd)
+                    rent = st.number_input("Amafaranga y'ubukode (buri kwezi)", min_value=0, value=int(t.get("rent",0)))
+                    submitted = st.form_submit_button("Hindura amakuru")
+
+                if submitted:
+                    tenants.loc[tenants["tenant_id"].astype(str) == search_id,
+                        ["fullname", "id_number", "phone", "email",
+                         "sex","people","house_status","start_date","rent"]] = [
+                            fullname, id_number, phone, email, sex,
+                            str(people), house_status, str(start_date), str(rent)
+                        ]
+                    updated_dict = tenants[tenants["tenant_id"].astype(str) == search_id].iloc[0].to_dict()
+                    save_tenant_profile_file(updated_dict)
+                    save_tenants(tenants)
+                    st.success("Amakuru y'umukiriya yahinduwe neza!")
+                    st.session_state["edit_search_id"] = ""
+
+    # -------------------------
+    # 4) Payments
+    # -------------------------
     elif menu == "Imyishyurire":
         st.subheader("💰 Imyishyurire y'abakiriya")
         payments = load_payments()
-        if payments.empty:
-            st.info("Nta makuru y'imyishyurire abitswe.")
-        else:
-            st.dataframe(payments)
-
-        st.write("---")
-        with st.form("add_payment"):
-            tenant_id = st.text_input("ID y'umukiriya")
-            month = st.text_input("Ukwezi (ex: 2025-01)")
-            status = st.selectbox("Status yo kwishyura", ["Yishyuye", "Yatinze", "Ntabwo Yishyuye"])
-            paid_date = st.date_input("Itariki yishyuwe", value=datetime.date.today())
-            if st.form_submit_button("Ongeramo Imyishyurire"):
-                payments = payments.copy()
-                new_id = str(int(payments["payment_id"].astype(int).max()) + 1) if (not payments.empty and payments["payment_id"].astype(str).str.isnumeric().any()) else "1"
-                new_row = {
-                    "payment_id": new_id,
-                    "tenant_id": tenant_id,
-                    "month": month,
-                    "status": status,
-                    "paid_date": str(paid_date),
-                }
-                payments = pd.concat([payments, pd.DataFrame([new_row])], ignore_index=True)
-                save_payments(payments)
-                st.success("Imyishyurire yabitswe!")
-
-    # ======================
-    # 5) PAYMENT MONITORING & REMINDERS
+        st.dataframe(payments)
+ # 5) PAYMENT MONITORING & REMINDERS
     # ======================
     elif menu == "Payment Monitoring":
         st.subheader("⏰ Payment Dashboard + Reminders")
@@ -378,182 +507,90 @@ def admin_portal():
         else:
             st.info("Nta mukiriya uri muri ubwo bwiciro.")
 
-    # ======================
-    # 6) FILE MANAGEMENT
-    # ======================
-    elif menu == "Dosiye z'Abakiriya":
+    # -------------------------
+    # 5) Messages
+    # -------------------------
+    elif menu == "Ubutumwa":
+        st.subheader("✉️ Ubutumwa bw'abakiriya")
+        st.dataframe(messages)
+
+    # -------------------------
+    # 6) Tenant Files Management
+    # -------------------------
+    elif menu == "Gucunga Dosiye z'Abakiriya":
         st.subheader("📂 Dosiye z'abakiriya")
         tenants = load_tenants()
         if tenants.empty:
             st.info("Nta tenants zibitswe.")
         else:
-            if st.button("⬇️ Kuramo Tenant Database (Excel)"):
-                excel_path = os.path.join(TENANT_FILES_DIR, "ALL_TENANTS.xlsx")
+            # Download Excel of all tenants
+            if st.button("⬇️ Kuramo Database yose (Excel)"):
+                excel_path = os.path.join(TENANT_FILES_DIR, "ABAKIRIYA_ALL.xlsx")
                 tenants.to_excel(excel_path, index=False)
                 with open(excel_path, "rb") as f:
                     st.download_button(
-                        label="📥 Download ALL_TENANTS.xlsx",
+                        label="📥 Download ABAKIRIYA_ALL.xlsx",
                         data=f,
-                        file_name="ALL_TENANTS.xlsx",
+                        file_name="ABAKIRIYA_ALL.xlsx",
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                     )
-
             st.write("---")
             for _, t in tenants.iterrows():
                 tenant_id = str(t["tenant_id"])
-                st.write(f"### 👤 {t['fullname']} — ID: {tenant_id}")
+                fullname = t["fullname"]
+                st.write(f"### 👤 {fullname} — ID: {tenant_id}")
 
-                # JSON profile
                 json_file = os.path.join(TENANT_FILES_DIR, f"{tenant_id}.json")
                 if os.path.exists(json_file):
                     with open(json_file, "rb") as f:
                         st.download_button(
-                            label="📥 Kuramo Dosiye (JSON)",
+                            label="📥 Kuramo Dosiye ya Tenant (JSON)",
                             data=f,
                             file_name=f"{tenant_id}.json",
                             mime="application/json"
                         )
                 else:
-                    st.write("Nta JSON profile ibonetse.")
+                    st.warning("⚠️ Nta dosiye ya JSON ibonetse kuri uyu mukiriya.")
 
-                # Agreement PDF (path stored in tenants df)
                 agreement = t.get("agreement_file", "")
                 if pd.notna(agreement) and agreement and os.path.exists(agreement):
                     with open(agreement, "rb") as f:
                         st.download_button(
-                            label="📥 Kuramo Amasezerano (PDF)",
+                            label="📥 Kuramo Amasezerano ya PDF",
                             data=f,
                             file_name=os.path.basename(agreement),
                             mime="application/pdf"
                         )
                 else:
-                    st.write("Nta agreement PDF ibonetse cyangwa file yabuze.")
+                    st.info("📝 Nta masezerano ya PDF abitswe cyangwa file yaburiwe.")
 
-                # any extra files inside tenant folder
                 tenant_folder = os.path.join(TENANT_FILES_DIR, tenant_id)
                 if os.path.exists(tenant_folder):
-                    extras = [x for x in os.listdir(tenant_folder) if os.path.isfile(os.path.join(tenant_folder,x))]
-                    if extras:
-                        st.write("— Ibindi byoherejwe na tenant:")
-                        for ex in extras:
-                            path_ex = os.path.join(tenant_folder, ex)
-                            with open(path_ex, "rb") as f:
+                    extra_files = [f for f in os.listdir(tenant_folder) if os.path.isfile(os.path.join(tenant_folder, f))]
+                    if extra_files:
+                        st.write("📎 **Ibindi byongewe na tenant:**")
+                        for ex in extra_files:
+                            fpath = os.path.join(tenant_folder, ex)
+                            with open(fpath, "rb") as f:
                                 st.download_button(label=f"📥 {ex}", data=f, file_name=ex)
+                    else:
+                        st.write("Nta bindi byongewe n'uyu mukiriya.")
+                else:
+                    st.write("Nta folder ya dosiye ibonetse kuri uyu mukiriya.")
+
                 st.write("---")
 
-    # ======================
-    # 7) SEND SMS & EMAIL MANUALLY
-    # ======================
-    elif menu == "Kohereza SMS/Email":
-        st.subheader("📨 Kohereza ubutumwa")
-        st.write("Ohereza SMS cyangwa Email ku nomero/email wahisemo.")
-        col1, col2 = st.columns(2)
-        with col1:
-            phone = st.text_input("Nomero ya telefone")
-            if st.button("Ohereza SMS"):
-                ok, info = send_sms(phone, st.session_state.get("manual_text", "Muraho"))
-                if ok:
-                    st.success("SMS yoherejwe!")
-                else:
-                    st.error(f"SMS error: {info}")
-        with col2:
-            email = st.text_input("Email")
-            if st.button("Ohereza Email"):
-                ok, info = send_email(email, "Ubutumwa bwa Nyirinzu", st.session_state.get("manual_text", "Muraho"))
-                if ok:
-                    st.success("Email yoherejwe!")
-                else:
-                    st.error(f"Email error: {info}")
-
-        st.write("---")
-        text = st.text_area("Ubutumwa", value="Muraho, iyi ni message ivuye ku nyir'inzu.")
-        st.session_state["manual_text"] = text
-
+# ----------------------------
+# MAIN APP
+# ----------------------------
+def main():
+    st.sidebar.title("🏠 GUCUNGA AMACURO")
+    app_mode = st.sidebar.selectbox("Hitamo Portal", ["Tenant Portal", "Admin Portal"])
+    if app_mode == "Tenant Portal":
+        tenant_portal()
+    else:
+        admin_portal()
 
 if __name__ == "__main__":
-    admin_portal()
-
-
-# ======================================================================
-# 5) EDIT TENANT — CLEAN & FINAL VERSION
-# ======================================================================
-
-elif menu == "Hindura amakuru y'umukiriya":
-
-    st.subheader("✏️ Hindura amakuru y'umukiriya")
-
-    edit_id = st.text_input("Injiza Tenant ID ushaka guhindura")
-
-    if st.button("Shaka Umukiriya"):
-
-        if edit_id.strip() == "":
-            st.warning("Injiza Tenant ID")
-        elif edit_id not in tenants["tenant_id"].astype(str).values:
-            st.error("Tenant ID ntiboneka muri system.")
-        else:
-            # Load tenant data
-            t = tenants[tenants["tenant_id"].astype(str) == edit_id].iloc[0]
-            st.success(f"Uhitanye: {t['fullname']}")
-
-            # -------------------- EDIT FORM --------------------
-            with st.form("edit_tenant_form"):
-
-                fullname = st.text_input("Amazina yose y'umukiriya", t["fullname"])
-                id_number = st.text_input("Indangamuntu (ID)", t.get("id_number", ""))
-                phone = st.text_input("Nomero ya telefone", t.get("phone", ""))
-                email = st.text_input("Email", t.get("email", ""))
-
-                sex = st.selectbox(
-                    "Igitsina",
-                    ["Gabo", "Gore"],
-                    index=0 if t["sex"] == "Gabo" else 1
-                )
-
-                people = st.number_input(
-                    "Abantu batuye mu nzu",
-                    min_value=1,
-                    value=int(t.get("people", 1))
-                )
-
-                house_status = st.text_input(
-                    "Ubwoko bw'inzu",
-                    t.get("house_status", "")
-                )
-
-                # FIX start date parsing
-                from datetime import date
-                try:
-                    start_dt = date.fromisoformat(t["start_date"])
-                except:
-                    start_dt = date.today()
-
-                start_date = st.date_input("Itariki atangiye kubamo", start_dt)
-
-                rent = st.number_input(
-                    "Amafaranga y'ubukode (buri kwezi)",
-                    min_value=0,
-                    value=int(t.get("rent", 0))
-                )
-
-                submitted = st.form_submit_button("Hindura amakuru")
-
-                if submitted:
-                    # Update data in dataframe
-                    tenants.loc[
-                        tenants["tenant_id"].astype(str) == edit_id,
-                        ["fullname", "id_number", "phone", "email",
-                         "sex", "people", "house_status", "start_date", "rent"]
-                    ] = [
-                        fullname, id_number, phone, email, sex,
-                        str(people), house_status, str(start_date), str(rent)
-                    ]
-
-                    # Save tenant profile PDF/JSON
-                    updated_dict = tenants[tenants["tenant_id"].astype(str) == edit_id].iloc[0].to_dict()
-                    save_tenant_profile_file(updated_dict)
-
-                    # Save full tenants list
-                    save_tenants(tenants)
-
-                    st.success("✔️ Amakuru y'umukiriya yahinduwe neza!")
+    main()
 
