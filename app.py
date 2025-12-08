@@ -133,7 +133,7 @@ def load_tenant_profile_file(tenant_id):
 # Tenant portal function
 # ----------------------------
 def tenant_portal():
-    st.header("Tenant Portal (Urubuga rw'Umukiriya)")
+    st.header("Tenant Portal")
 
     tenants = load_tenants()
     tenants = ensure_tenants_columns(tenants)
@@ -275,7 +275,7 @@ def tenant_portal():
 # Admin portal function
 # ----------------------------
 def admin_portal():
-    st.header("👨‍💼Admin Portal")
+    st.header("Admin Portal")
 
     pwd = st.text_input("Injiza ijambo ry'ibanga (Admin Password)", type="password")
     if pwd != ADMIN_PASSWORD:
@@ -593,5 +593,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
