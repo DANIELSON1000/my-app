@@ -275,7 +275,7 @@ def tenant_portal():
 # Admin portal function
 # ----------------------------
 def admin_portal():
-    st.header("👨‍💼 Ubuyobozi — Admin Portal")
+    st.header("👨‍💼Admin Portal")
 
     pwd = st.text_input("Injiza ijambo ry'ibanga (Admin Password)", type="password")
     if pwd != ADMIN_PASSWORD:
@@ -593,4 +593,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
