@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-tenant.py — tenant can login with phone and download only their files from tenant_files/
+tenant.py — tenant can login with phone and download only their files from tenant_files/<tenant_id>/
 Includes payment countdown dashboard
 """
 import streamlit as st
@@ -26,7 +26,8 @@ def tenant_portal():
             return
 
         user = user_df.iloc[0].to_dict()
-        st.success(f"Mwaramutse {user.get('fullname')}")
+        tenant_id = str(user.get("tenant_id"))
+        st.success(f"Muraho {user.get('fullname')}")
         st.markdown("---")
 
         # ----------------------------
@@ -56,9 +57,14 @@ def tenant_portal():
             due_day = start_date.day
             today = datetime.date.today()
             this_month_due = today.replace(day=due_day)
-            next_due = this_month_due if this_month_due >= today else (
-                datetime.date(this_month_due.year + 1, 1, due_day) if this_month_due.month == 12
-                else datetime.date(this_month_due.year, this_month_due.month + 1, due_day)
+
+            next_due = (
+                this_month_due if this_month_due >= today else
+                (
+                    datetime.date(this_month_due.year + 1, 1, due_day)
+                    if this_month_due.month == 12
+                    else datetime.date(this_month_due.year, this_month_due.month + 1, due_day)
+                )
             )
             days_left = (next_due - today).days
 
@@ -78,7 +84,8 @@ def tenant_portal():
         # ----------------------------
         st.subheader("Status y'Ubwishyu")
         payments = load_payments()
-        my_pay = payments[payments["tenant_id"] == str(user.get("tenant_id"))]
+        my_pay = payments[payments["tenant_id"] == tenant_id]
+
         if my_pay.empty:
             st.info("Nta makuru y'ubwishyu aboneka.")
         else:
@@ -99,7 +106,7 @@ def tenant_portal():
                 new_id = str(int(msgs["message_id"].astype(int).max()) + 1) if not msgs.empty else "1"
                 new_row = {
                     "message_id": new_id,
-                    "tenant_id": str(user.get("tenant_id")),
+                    "tenant_id": tenant_id,
                     "message": message,
                     "reply": "",
                     "date_sent": timestamp_now(),
@@ -117,7 +124,8 @@ def tenant_portal():
         # ----------------------------
         st.subheader("Ibisubizo")
         msgs = load_messages()
-        my_msgs = msgs[msgs["tenant_id"] == str(user.get("tenant_id"))].sort_values("date_sent", ascending=False)
+        my_msgs = msgs[msgs["tenant_id"] == tenant_id].sort_values("date_sent", ascending=False)
+
         if my_msgs.empty:
             st.info("Nta butumwa bwawe bubonetse.")
         else:
@@ -125,14 +133,18 @@ def tenant_portal():
 
         st.markdown("---")
 
-        # ----------------------------
-        # Tenant files section
-        # ----------------------------
-        st.subheader("📂 Dosiye zawe zibitswe")
-        files = sorted(os.listdir(TENANT_FILES_DIR))
+        # =========================================================
+        # SECURE TENANT FILES SECTION — ONLY VIEW OWN DOCUMENTS
+        # =========================================================
+        st.subheader("📂 Dosiye zawe zibitswe (Private Files Only)")
+
+        # Create tenant directory: tenant_files/<tenant_id>/
+        tenant_dir = os.path.join(TENANT_FILES_DIR, tenant_id)
+        os.makedirs(tenant_dir, exist_ok=True)
+
         found = False
 
-        # 1️⃣ DOWNLOAD AGREEMENT PDF (if exists)
+        # 1️⃣ AGREEMENT file (from database)
         agreement_path = user.get("agreement_file")
         if agreement_path and os.path.exists(agreement_path):
             st.write("• Amasezerano (Agreement PDF)")
@@ -144,14 +156,20 @@ def tenant_portal():
                 )
             found = True
 
-        # 2️⃣ DOWNLOAD JSON + other files
-        for f in files:
-            if str(user.get("phone")) in f or str(user.get("tenant_id")) in f:
-                path = os.path.join(TENANT_FILES_DIR, f)
+        # 2️⃣ All files in tenant_files/<tenant_id>/
+        files = sorted(os.listdir(tenant_dir))
+        if files:
+            for f in files:
+                path = os.path.join(tenant_dir, f)
+
                 st.write("•", f)
                 with open(path, "rb") as file:
-                    st.download_button(label=f"Kuramo {f}", data=file, file_name=f)
+                    st.download_button(
+                        label=f"Kuramo {f}",
+                        data=file,
+                        file_name=f
+                    )
                 found = True
 
         if not found:
-            st.info("Nta dosiye yawe yabonetse muri server (tenant_files/).")
+            st.info("Nta dosiye yawe ibitswe muri server.")
