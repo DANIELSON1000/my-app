@@ -584,7 +584,7 @@ def admin_portal():
 # MAIN APP
 # ----------------------------
 def main():
-    st.sidebar.title("🏠 GUCUNGA AMACURO")
+    st.sidebar.title("🏠TENANT MONITORING SYSTEM")
     app_mode = st.sidebar.selectbox("Hitamo Portal", ["Tenant Portal", "Admin Portal"])
     if app_mode == "Tenant Portal":
         tenant_portal()
@@ -593,3 +593,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
