@@ -43,7 +43,7 @@ def save_tenant_profile_file(tenant_dict):
 # ADMIN PORTAL
 # ======================================================================================
 def admin_portal():
-    st.header("👨‍💼 Ubuyobozi — Admin Portal")
+    st.header("👨‍💼 Admin Portal")
 
     # ------------------------
     # LOGIN
@@ -428,3 +428,4 @@ elif menu == "Reba abakiriya":
         if st.button("Ohereza Email"):
             ok, info = send_email(email, "Ubutumwa bwa Nyirinzu", text)
             st.success("Email yoherejwe!" if ok else f"Error: {info}")
+
